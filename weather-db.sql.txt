@@ -1,0 +1,1307 @@
+-- ** Database generated with pgModeler (PostgreSQL Database Modeler).
+-- ** pgModeler version: 1.2.1
+-- ** PostgreSQL version: 17.0
+-- ** Project Site: pgmodeler.io
+-- ** Model Author: ---
+-- object: weather | type: ROLE --
+-- DROP ROLE IF EXISTS weather;
+CREATE ROLE weather WITH 
+	CREATEDB;
+-- ddl-end --
+
+-- object: "weatherAPI" | type: ROLE --
+-- DROP ROLE IF EXISTS "weatherAPI";
+CREATE ROLE "weatherAPI" WITH 
+	LOGIN
+	 PASSWORD '${WEATHER_API_PASSWORD}';
+-- ddl-end --
+
+-- object: "weatherCollector" | type: ROLE --
+-- DROP ROLE IF EXISTS "weatherCollector";
+CREATE ROLE "weatherCollector" WITH 
+	LOGIN
+	 PASSWORD '${WEATHER_COLLECTOR_PASSWORD}';
+-- ddl-end --
+
+
+-- ** Database creation must be performed outside a multi lined SQL file. 
+-- ** These commands were put in this file only as a convenience.
+
+-- object: weather | type: DATABASE --
+-- DROP DATABASE IF EXISTS weather;
+CREATE DATABASE weather;
+-- ddl-end --
+
+
+SET check_function_bodies = false;
+-- ddl-end --
+
+-- object: weather | type: SCHEMA --
+-- DROP SCHEMA IF EXISTS weather CASCADE;
+CREATE SCHEMA weather;
+-- ddl-end --
+ALTER SCHEMA weather OWNER TO weather;
+-- ddl-end --
+
+-- object: auth | type: SCHEMA --
+-- DROP SCHEMA IF EXISTS auth CASCADE;
+CREATE SCHEMA auth;
+-- ddl-end --
+ALTER SCHEMA auth OWNER TO weather;
+-- ddl-end --
+
+-- object: audit | type: SCHEMA --
+-- DROP SCHEMA IF EXISTS audit CASCADE;
+CREATE SCHEMA audit;
+-- ddl-end --
+ALTER SCHEMA audit OWNER TO weather;
+-- ddl-end --
+
+-- object: stations | type: SCHEMA --
+-- DROP SCHEMA IF EXISTS stations CASCADE;
+CREATE SCHEMA stations;
+-- ddl-end --
+ALTER SCHEMA stations OWNER TO weather;
+-- ddl-end --
+
+SET search_path TO pg_catalog,public,weather,auth,audit,stations;
+-- ddl-end --
+
+-- object: postgis | type: EXTENSION --
+-- DROP EXTENSION IF EXISTS postgis CASCADE;
+CREATE EXTENSION postgis
+WITH SCHEMA public;
+-- ddl-end --
+COMMENT ON EXTENSION postgis IS E'PostGIS geometry, geography, and raster spatial types and functions';
+-- ddl-end --
+
+-- object: "uuid-ossp" | type: EXTENSION --
+-- DROP EXTENSION IF EXISTS "uuid-ossp" CASCADE;
+CREATE EXTENSION "uuid-ossp"
+WITH SCHEMA public;
+-- ddl-end --
+
+-- object: btree_gist | type: EXTENSION --
+-- DROP EXTENSION IF EXISTS btree_gist CASCADE;
+CREATE EXTENSION btree_gist
+WITH SCHEMA weather;
+-- ddl-end --
+
+-- object: stations.stations_station_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS stations.stations_station_id_seq CASCADE;
+CREATE SEQUENCE stations.stations_station_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE stations.stations_station_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_data_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS weather.weather_data_id_seq CASCADE;
+CREATE SEQUENCE weather.weather_data_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE weather.weather_data_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_daily_summary_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS weather.weather_daily_summary_id_seq CASCADE;
+CREATE SEQUENCE weather.weather_daily_summary_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE weather.weather_daily_summary_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_hourly_summary_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS weather.weather_hourly_summary_id_seq CASCADE;
+CREATE SEQUENCE weather.weather_hourly_summary_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE weather.weather_hourly_summary_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_monthly_summary_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS weather.weather_monthly_summary_seq CASCADE;
+CREATE SEQUENCE weather.weather_monthly_summary_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE weather.weather_monthly_summary_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_yearly_summary_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS weather.weather_yearly_summary_id_seq CASCADE;
+CREATE SEQUENCE weather.weather_yearly_summary_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE weather.weather_yearly_summary_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: auth.users_user_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS auth.users_user_id_seq CASCADE;
+CREATE SEQUENCE auth.users_user_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE auth.users_user_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: auth.user_sessions_session_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS auth.user_sessions_session_id_seq CASCADE;
+CREATE SEQUENCE auth.user_sessions_session_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE auth.user_sessions_session_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: auth.api_key_type | type: TYPE --
+-- DROP TYPE IF EXISTS auth.api_key_type CASCADE;
+CREATE TYPE auth.api_key_type AS
+ENUM ('stations_management','weather_upload','stations_control');
+-- ddl-end --
+ALTER TYPE auth.api_key_type OWNER TO weather;
+-- ddl-end --
+
+-- object: audit.log_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS audit.log_id_seq CASCADE;
+CREATE SEQUENCE audit.log_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE audit.log_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.update_hourly_summary | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS weather.update_hourly_summary() CASCADE;
+CREATE OR REPLACE FUNCTION weather.update_hourly_summary ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY DEFINER
+	PARALLEL UNSAFE
+	COST 1
+	AS 
+$function$
+DECLARE
+    hour_begin timestamptz;
+    hour_range tstzrange;
+BEGIN
+    -- Hora de inicio del dato recién insertado
+    hour_begin := date_trunc('hour', lower(NEW.time_range));
+    hour_range := tstzrange(hour_begin, hour_begin + interval '1 hour');
+
+    -- Insertar o actualizar los promedios de esa hora y estación
+    INSERT INTO weather.weather_hourly_summary (station_id, time_range, avg_temperature, avg_humidity, avg_pressure, sum_rainfall, stddev_rainfall, avg_wind_speed, avg_wind_direction, stddev_wind_speed, max_gust_speed, max_gust_direction, avg_lux, avg_uvi, avg_solar_irradiance)
+    SELECT
+        NEW.station_id AS station_id,
+        hour_range,
+        AVG(temperature) AS avg_temperature,
+        AVG(humidity) AS avg_humidity,
+        AVG(pressure) AS avg_pressure,
+        SUM(rainfall) AS sum_rainfall,
+        STDDEV(rainfall) AS stddev_rainfall,
+        AVG(wind_speed) AS avg_wind_speed,
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ) AS avg_wind_direction,
+        STDDEV(wind_speed) AS stddev_wind_speed,
+        MAX(gust_speed) AS max_gust_speed,
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && hour_range
+         ORDER BY gust_speed DESC
+         LIMIT 1) AS max_gust_direction,
+        AVG(lux) AS avg_lux,
+        AVG(uvi) AS avg_uvi,
+        AVG(solar_irradiance) AS avg_solar_irradiance
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && hour_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+    RETURN NEW;
+END;
+$function$;
+-- ddl-end --
+ALTER FUNCTION weather.update_hourly_summary() OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.update_daily_summary | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS weather.update_daily_summary() CASCADE;
+CREATE OR REPLACE FUNCTION weather.update_daily_summary ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY DEFINER
+	PARALLEL UNSAFE
+	COST 1
+	AS 
+$function$
+DECLARE
+    day_begin timestamptz;
+    day_range tstzrange;
+BEGIN
+    -- Día de inicio del dato recién insertado según hora de Madrid
+    day_begin := date_trunc('day', lower(NEW.time_range) AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid';
+    day_range := tstzrange(day_begin, day_begin + interval '1 day');
+
+    -- Insertar o actualizar los agregados diarios
+    INSERT INTO weather.weather_daily_summary (
+        station_id, time_range,
+        avg_temperature, max_temperature, min_temperature, stddev_temperature,
+        avg_humidity, max_humidity, min_humidity, stddev_humidity,
+        avg_pressure, max_pressure, min_pressure,
+        sum_rainfall, stddev_rainfall,
+        avg_wind_speed, avg_wind_direction, stddev_wind_speed, wind_run,
+        max_gust_speed, max_gust_direction,
+        avg_lux, max_lux,
+        avg_uvi, max_uvi,
+        avg_solar_irradiance
+    )
+    SELECT
+        NEW.station_id,
+        day_range,
+        AVG(temperature),
+        MAX(temperature),
+        MIN(temperature),
+        STDDEV(temperature),
+        AVG(humidity),
+        MAX(humidity),
+        MIN(humidity),
+        STDDEV(humidity),
+        AVG(pressure),
+        MAX(pressure),
+        MIN(pressure),
+        SUM(rainfall),
+        STDDEV(rainfall),
+        AVG(wind_speed),
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ),
+        STDDEV(wind_speed),
+        SUM(wind_speed * EXTRACT(EPOCH FROM (upper(time_range) - lower(time_range)))) AS wind_run,
+        MAX(gust_speed),
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && day_range
+         ORDER BY gust_speed DESC
+         LIMIT 1),
+        AVG(lux),
+        MAX(lux),
+        AVG(uvi),
+        MAX(uvi),
+        AVG(solar_irradiance)
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && day_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        max_temperature = EXCLUDED.max_temperature,
+        min_temperature = EXCLUDED.min_temperature,
+        stddev_temperature = EXCLUDED.stddev_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        max_humidity = EXCLUDED.max_humidity,
+        min_humidity = EXCLUDED.min_humidity,
+        stddev_humidity = EXCLUDED.stddev_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        max_pressure = EXCLUDED.max_pressure,
+        min_pressure = EXCLUDED.min_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        wind_run = EXCLUDED.wind_run,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        max_lux = EXCLUDED.max_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        max_uvi = EXCLUDED.max_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+
+    RETURN NEW;
+END;
+$function$;
+-- ddl-end --
+ALTER FUNCTION weather.update_daily_summary() OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.update_monthly_summary | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS weather.update_monthly_summary() CASCADE;
+CREATE OR REPLACE FUNCTION weather.update_monthly_summary ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY DEFINER
+	PARALLEL UNSAFE
+	COST 1
+	AS 
+$function$
+DECLARE
+    month_begin timestamptz;
+    month_range tstzrange;
+BEGIN
+    -- Mes de inicio del dato recién insertado según hora de Madrid
+    month_begin := date_trunc('month', lower(NEW.time_range) AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid';
+    month_range := tstzrange(month_begin, month_begin + interval '1 month');
+
+    -- Insertar o actualizar los agregados mensuales
+    INSERT INTO weather.weather_monthly_summary (
+        station_id, time_range,
+        avg_temperature, max_temperature, min_temperature, stddev_temperature,
+        avg_humidity, max_humidity, min_humidity, stddev_humidity,
+        avg_pressure, max_pressure, min_pressure,
+        sum_rainfall, stddev_rainfall,
+        avg_wind_speed, avg_wind_direction, stddev_wind_speed,
+        max_gust_speed, max_gust_direction,
+        avg_lux, max_lux,
+        avg_uvi, max_uvi,
+        avg_solar_irradiance
+    )
+    SELECT
+        NEW.station_id,
+        month_range,
+        AVG(temperature),
+        MAX(temperature),
+        MIN(temperature),
+        STDDEV(temperature),
+        AVG(humidity),
+        MAX(humidity),
+        MIN(humidity),
+        STDDEV(humidity),
+        AVG(pressure),
+        MAX(pressure),
+        MIN(pressure),
+        SUM(rainfall),
+        STDDEV(rainfall),
+        AVG(wind_speed),
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ),
+        STDDEV(wind_speed),
+        MAX(gust_speed),
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && month_range
+         ORDER BY gust_speed DESC
+         LIMIT 1),
+        AVG(lux),
+        MAX(lux),
+        AVG(uvi),
+        MAX(uvi),
+        AVG(solar_irradiance)
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && month_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        max_temperature = EXCLUDED.max_temperature,
+        min_temperature = EXCLUDED.min_temperature,
+        stddev_temperature = EXCLUDED.stddev_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        max_humidity = EXCLUDED.max_humidity,
+        min_humidity = EXCLUDED.min_humidity,
+        stddev_humidity = EXCLUDED.stddev_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        max_pressure = EXCLUDED.max_pressure,
+        min_pressure = EXCLUDED.min_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        wind_run = EXCLUDED.wind_run,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        max_lux = EXCLUDED.max_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        max_uvi = EXCLUDED.max_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+
+    RETURN NEW;
+END;
+$function$;
+-- ddl-end --
+ALTER FUNCTION weather.update_monthly_summary() OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.update_yearly_summary | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS weather.update_yearly_summary() CASCADE;
+CREATE OR REPLACE FUNCTION weather.update_yearly_summary ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY DEFINER
+	PARALLEL UNSAFE
+	COST 1
+	AS 
+$function$
+DECLARE
+    year_begin timestamptz;
+    year_range tstzrange;
+BEGIN
+    -- Año de inicio del dato recién insertado según hora de Madrid
+    year_begin := date_trunc('year', lower(NEW.time_range) AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid';
+    year_range := tstzrange(year_begin, year_begin + interval '1 year');
+
+    -- Insertar o actualizar los agregados anuales
+    INSERT INTO weather.weather_yearly_summary (
+        station_id, time_range,
+        avg_temperature, max_temperature, min_temperature, stddev_temperature,
+        avg_humidity, max_humidity, min_humidity, stddev_humidity,
+        avg_pressure, max_pressure, min_pressure,
+        sum_rainfall, stddev_rainfall,
+        avg_wind_speed, avg_wind_direction, stddev_wind_speed,
+        max_gust_speed, max_gust_direction,
+        avg_lux, max_lux,
+        avg_uvi, max_uvi,
+        avg_solar_irradiance
+    )
+    SELECT
+        NEW.station_id,
+        year_range,
+        AVG(temperature),
+        MAX(temperature),
+        MIN(temperature),
+        STDDEV(temperature),
+        AVG(humidity),
+        MAX(humidity),
+        MIN(humidity),
+        STDDEV(humidity),
+        AVG(pressure),
+        MAX(pressure),
+        MIN(pressure),
+        SUM(rainfall),
+        STDDEV(rainfall),
+        AVG(wind_speed),
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ),
+        STDDEV(wind_speed),
+        MAX(gust_speed),
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && year_range
+         ORDER BY gust_speed DESC
+         LIMIT 1),
+        AVG(lux),
+        MAX(lux),
+        AVG(uvi),
+        MAX(uvi),
+        AVG(solar_irradiance)
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && year_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        max_temperature = EXCLUDED.max_temperature,
+        min_temperature = EXCLUDED.min_temperature,
+        stddev_temperature = EXCLUDED.stddev_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        max_humidity = EXCLUDED.max_humidity,
+        min_humidity = EXCLUDED.min_humidity,
+        stddev_humidity = EXCLUDED.stddev_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        max_pressure = EXCLUDED.max_pressure,
+        min_pressure = EXCLUDED.min_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        max_lux = EXCLUDED.max_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        max_uvi = EXCLUDED.max_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+
+    RETURN NEW;
+END;
+$function$;
+-- ddl-end --
+ALTER FUNCTION weather.update_yearly_summary() OWNER TO weather;
+-- ddl-end --
+
+-- object: auth.api_keys_key_id_seq | type: SEQUENCE --
+-- DROP SEQUENCE IF EXISTS auth.api_keys_key_id_seq CASCADE;
+CREATE SEQUENCE auth.api_keys_key_id_seq
+	INCREMENT BY 1
+	MINVALUE 0
+	MAXVALUE 2147483647
+	START WITH 1
+	CACHE 1
+	NO CYCLE
+	OWNED BY NONE;
+
+-- ddl-end --
+ALTER SEQUENCE auth.api_keys_key_id_seq OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_data | type: TABLE --
+-- DROP TABLE IF EXISTS weather.weather_data CASCADE;
+CREATE TABLE weather.weather_data (
+	id integer NOT NULL DEFAULT nextval('weather.weather_data_id_seq'::regclass),
+	station_id integer NOT NULL,
+	time_range tstzrange NOT NULL,
+	temperature real,
+	humidity real,
+	pressure real,
+	lux real,
+	uvi real,
+	wind_speed real,
+	wind_direction real,
+	gust_speed real,
+	gust_direction real,
+	rainfall real,
+	solar_irradiance real,
+	CONSTRAINT weather_data_pk PRIMARY KEY (id)
+);
+-- ddl-end --
+ALTER TABLE weather.weather_data OWNER TO weather;
+-- ddl-end --
+
+-- object: trg_update_daily_summary | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trg_update_daily_summary ON weather.weather_data CASCADE;
+CREATE OR REPLACE TRIGGER trg_update_daily_summary
+	AFTER INSERT OR UPDATE
+	ON weather.weather_data
+	FOR EACH ROW
+	EXECUTE PROCEDURE weather.update_daily_summary();
+-- ddl-end --
+
+-- object: trg_update_monthly_summary | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trg_update_monthly_summary ON weather.weather_data CASCADE;
+CREATE OR REPLACE TRIGGER trg_update_monthly_summary
+	AFTER INSERT OR UPDATE
+	ON weather.weather_data
+	FOR EACH ROW
+	EXECUTE PROCEDURE weather.update_monthly_summary();
+-- ddl-end --
+
+-- object: trg_update_yearly_summary | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trg_update_yearly_summary ON weather.weather_data CASCADE;
+CREATE OR REPLACE TRIGGER trg_update_yearly_summary
+	AFTER INSERT OR UPDATE
+	ON weather.weather_data
+	FOR EACH ROW
+	EXECUTE PROCEDURE weather.update_yearly_summary();
+-- ddl-end --
+
+-- object: trg_update_hourly_summary | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trg_update_hourly_summary ON weather.weather_data CASCADE;
+CREATE OR REPLACE TRIGGER trg_update_hourly_summary
+	AFTER INSERT OR UPDATE
+	ON weather.weather_data
+	FOR EACH ROW
+	EXECUTE PROCEDURE weather.update_hourly_summary();
+-- ddl-end --
+
+-- object: weather.weather_daily_summary | type: TABLE --
+-- DROP TABLE IF EXISTS weather.weather_daily_summary CASCADE;
+CREATE TABLE weather.weather_daily_summary (
+	id integer NOT NULL DEFAULT nextval('weather.weather_daily_summary_id_seq'::regclass),
+	station_id integer NOT NULL,
+	time_range tstzrange NOT NULL,
+	avg_temperature real,
+	max_temperature real,
+	min_temperature real,
+	stddev_temperature real,
+	avg_humidity real,
+	max_humidity real,
+	min_humidity real,
+	stddev_humidity real,
+	avg_pressure real,
+	max_pressure real,
+	min_pressure real,
+	sum_rainfall real,
+	stddev_rainfall real,
+	avg_wind_speed real,
+	avg_wind_direction real,
+	stddev_wind_speed real,
+	wind_run real,
+	max_gust_speed real,
+	max_gust_direction real,
+	avg_lux real,
+	max_lux real,
+	avg_uvi real,
+	max_uvi real,
+	avg_solar_irradiance real,
+	CONSTRAINT weather_daily_summary_pk PRIMARY KEY (id)
+);
+-- ddl-end --
+ALTER TABLE weather.weather_daily_summary OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_hourly_summary | type: TABLE --
+-- DROP TABLE IF EXISTS weather.weather_hourly_summary CASCADE;
+CREATE TABLE weather.weather_hourly_summary (
+	id integer NOT NULL DEFAULT nextval('weather.weather_hourly_summary_id_seq'::regclass),
+	station_id integer NOT NULL,
+	time_range tstzrange NOT NULL,
+	avg_temperature real,
+	avg_humidity real,
+	avg_pressure real,
+	sum_rainfall real,
+	stddev_rainfall real,
+	avg_wind_speed real,
+	avg_wind_direction real,
+	stddev_wind_speed real,
+	max_gust_speed real,
+	max_gust_direction real,
+	avg_lux real,
+	avg_uvi real,
+	avg_solar_irradiance real,
+	CONSTRAINT weather_hourly_summary_pk PRIMARY KEY (id)
+);
+-- ddl-end --
+ALTER TABLE weather.weather_hourly_summary OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_monthly_summary | type: TABLE --
+-- DROP TABLE IF EXISTS weather.weather_monthly_summary CASCADE;
+CREATE TABLE weather.weather_monthly_summary (
+	id integer NOT NULL DEFAULT nextval('weather.weather_monthly_summary_seq'::regclass),
+	station_id integer NOT NULL,
+	time_range tstzrange NOT NULL,
+	avg_temperature real,
+	max_temperature real,
+	min_temperature real,
+	stddev_temperature real,
+	avg_humidity real,
+	max_humidity real,
+	min_humidity real,
+	stddev_humidity real,
+	avg_pressure real,
+	max_pressure real,
+	min_pressure real,
+	sum_rainfall real,
+	stddev_rainfall real,
+	avg_wind_speed real,
+	avg_wind_direction real,
+	stddev_wind_speed real,
+	wind_run real,
+	max_gust_speed real,
+	max_gust_direction real,
+	avg_lux real,
+	max_lux real,
+	avg_uvi real,
+	max_uvi real,
+	avg_solar_irradiance real,
+	CONSTRAINT weather_monthly_summary_pk PRIMARY KEY (id)
+);
+-- ddl-end --
+ALTER TABLE weather.weather_monthly_summary OWNER TO weather;
+-- ddl-end --
+
+-- object: weather.weather_yearly_summary | type: TABLE --
+-- DROP TABLE IF EXISTS weather.weather_yearly_summary CASCADE;
+CREATE TABLE weather.weather_yearly_summary (
+	id integer NOT NULL DEFAULT nextval('weather.weather_yearly_summary_id_seq'::regclass),
+	station_id integer NOT NULL,
+	time_range tstzrange NOT NULL,
+	avg_temperature real,
+	max_temperature real,
+	min_temperature real,
+	stddev_temperature real,
+	avg_humidity real,
+	max_humidity real,
+	min_humidity real,
+	stddev_humidity real,
+	avg_pressure real,
+	max_pressure real,
+	min_pressure real,
+	sum_rainfall real,
+	stddev_rainfall real,
+	avg_wind_speed real,
+	avg_wind_direction real,
+	stddev_wind_speed real,
+	wind_run real,
+	max_gust_speed real,
+	max_gust_direction real,
+	avg_lux real,
+	max_lux real,
+	avg_uvi real,
+	max_uvi real,
+	avg_solar_irradiance real,
+	CONSTRAINT weather_yearly_summary_pk PRIMARY KEY (id)
+);
+-- ddl-end --
+ALTER TABLE weather.weather_yearly_summary OWNER TO weather;
+-- ddl-end --
+
+-- object: stations.stations | type: TABLE --
+-- DROP TABLE IF EXISTS stations.stations CASCADE;
+CREATE TABLE stations.stations (
+	station_id integer NOT NULL DEFAULT nextval('stations.stations_station_id_seq'::regclass),
+	user_id integer,
+	uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
+	name text NOT NULL,
+	location geography(POINTZ, 4326) NOT NULL,
+	can_recieve_commands boolean NOT NULL DEFAULT false,
+	deleted_at timestamptz,
+	CONSTRAINT stations_pk PRIMARY KEY (station_id),
+	CONSTRAINT stations_uuid_uq UNIQUE (uuid),
+	CONSTRAINT stations_name_uq UNIQUE (name)
+);
+-- ddl-end --
+ALTER TABLE stations.stations OWNER TO weather;
+-- ddl-end --
+
+-- object: audit.log | type: TABLE --
+-- DROP TABLE IF EXISTS audit.log CASCADE;
+CREATE TABLE audit.log (
+	id integer NOT NULL DEFAULT nextval('audit.log_id_seq'::regclass),
+	endpoint text NOT NULL,
+	method text NOT NULL,
+	status_code integer,
+	message text,
+	session_id integer,
+	key_id integer,
+	ip_address inet,
+	"timestamp" timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT log_pk PRIMARY KEY (id)
+);
+-- ddl-end --
+ALTER TABLE audit.log OWNER TO weather;
+-- ddl-end --
+
+-- object: auth.api_keys | type: TABLE --
+-- DROP TABLE IF EXISTS auth.api_keys CASCADE;
+CREATE TABLE auth.api_keys (
+	key_id integer NOT NULL DEFAULT nextval('auth.api_keys_key_id_seq'::regclass),
+	user_id integer NOT NULL,
+	uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
+	name text NOT NULL,
+	api_key text NOT NULL,
+	api_key_type auth.api_key_type NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	expires_at timestamptz,
+	revoked_at timestamptz,
+	station_id integer,
+	CONSTRAINT api_keys_pk PRIMARY KEY (key_id),
+	CONSTRAINT api_keys_uq UNIQUE (api_key),
+	CONSTRAINT api_key_uuid_uq UNIQUE (uuid)
+);
+-- ddl-end --
+ALTER TABLE auth.api_keys OWNER TO weather;
+-- ddl-end --
+
+-- object: auth.users | type: TABLE --
+-- DROP TABLE IF EXISTS auth.users CASCADE;
+CREATE TABLE auth.users (
+	user_id integer NOT NULL DEFAULT nextval('auth.users_user_id_seq'::regclass),
+	uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
+	username text NOT NULL,
+	password text NOT NULL,
+	email text NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	max_stations integer NOT NULL DEFAULT 0,
+	is_admin boolean NOT NULL DEFAULT false,
+	deleted_at timestamptz,
+	CONSTRAINT users_pk PRIMARY KEY (user_id),
+	CONSTRAINT users_uq UNIQUE (username),
+	CONSTRAINT users_uuid_uq UNIQUE (uuid)
+);
+-- ddl-end --
+ALTER TABLE auth.users OWNER TO weather;
+-- ddl-end --
+
+-- object: auth.user_sessions | type: TABLE --
+-- DROP TABLE IF EXISTS auth.user_sessions CASCADE;
+CREATE TABLE auth.user_sessions (
+	session_id integer NOT NULL DEFAULT nextval('auth.user_sessions_session_id_seq'::regclass),
+	user_id integer NOT NULL,
+	uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
+	session_token text NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	last_seen_at timestamptz NOT NULL DEFAULT now(),
+	expires_at timestamptz NOT NULL,
+	reauth_at timestamptz NOT NULL DEFAULT now(),
+	ip_address inet,
+	user_agent text,
+	revoked_at timestamptz,
+	CONSTRAINT user_sessions_pk PRIMARY KEY (session_id),
+	CONSTRAINT user_sessions_uq UNIQUE (session_token),
+	CONSTRAINT users_sessions_uuid_uq UNIQUE (uuid)
+);
+-- ddl-end --
+ALTER TABLE auth.user_sessions OWNER TO weather;
+-- ddl-end --
+
+-- object: users_fk | type: CONSTRAINT --
+-- ALTER TABLE auth.user_sessions DROP CONSTRAINT IF EXISTS users_fk CASCADE;
+ALTER TABLE auth.user_sessions ADD CONSTRAINT users_fk FOREIGN KEY (user_id)
+REFERENCES auth.users (user_id) MATCH FULL
+ON DELETE RESTRICT ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: users_fk | type: CONSTRAINT --
+-- ALTER TABLE auth.api_keys DROP CONSTRAINT IF EXISTS users_fk CASCADE;
+ALTER TABLE auth.api_keys ADD CONSTRAINT users_fk FOREIGN KEY (user_id)
+REFERENCES auth.users (user_id) MATCH FULL
+ON DELETE RESTRICT ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: users_fk | type: CONSTRAINT --
+-- ALTER TABLE stations.stations DROP CONSTRAINT IF EXISTS users_fk CASCADE;
+ALTER TABLE stations.stations ADD CONSTRAINT users_fk FOREIGN KEY (user_id)
+REFERENCES auth.users (user_id) MATCH FULL
+ON DELETE SET NULL ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: api_keys_name_uq | type: CONSTRAINT --
+-- ALTER TABLE auth.api_keys DROP CONSTRAINT IF EXISTS api_keys_name_uq CASCADE;
+ALTER TABLE auth.api_keys ADD CONSTRAINT api_keys_name_uq UNIQUE (user_id,name);
+-- ddl-end --
+
+-- object: user_sessions_fk | type: CONSTRAINT --
+-- ALTER TABLE audit.log DROP CONSTRAINT IF EXISTS user_sessions_fk CASCADE;
+ALTER TABLE audit.log ADD CONSTRAINT user_sessions_fk FOREIGN KEY (session_id)
+REFERENCES auth.user_sessions (session_id) MATCH FULL
+ON DELETE SET NULL ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: api_keys_fk | type: CONSTRAINT --
+-- ALTER TABLE audit.log DROP CONSTRAINT IF EXISTS api_keys_fk CASCADE;
+ALTER TABLE audit.log ADD CONSTRAINT api_keys_fk FOREIGN KEY (key_id)
+REFERENCES auth.api_keys (key_id) MATCH FULL
+ON DELETE SET NULL ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: stations_fk | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_data DROP CONSTRAINT IF EXISTS stations_fk CASCADE;
+ALTER TABLE weather.weather_data ADD CONSTRAINT stations_fk FOREIGN KEY (station_id)
+REFERENCES stations.stations (station_id) MATCH FULL
+ON DELETE RESTRICT ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: stations_fk | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_hourly_summary DROP CONSTRAINT IF EXISTS stations_fk CASCADE;
+ALTER TABLE weather.weather_hourly_summary ADD CONSTRAINT stations_fk FOREIGN KEY (station_id)
+REFERENCES stations.stations (station_id) MATCH FULL
+ON DELETE RESTRICT ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: stations_fk | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_daily_summary DROP CONSTRAINT IF EXISTS stations_fk CASCADE;
+ALTER TABLE weather.weather_daily_summary ADD CONSTRAINT stations_fk FOREIGN KEY (station_id)
+REFERENCES stations.stations (station_id) MATCH FULL
+ON DELETE RESTRICT ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: stations_fk | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_monthly_summary DROP CONSTRAINT IF EXISTS stations_fk CASCADE;
+ALTER TABLE weather.weather_monthly_summary ADD CONSTRAINT stations_fk FOREIGN KEY (station_id)
+REFERENCES stations.stations (station_id) MATCH FULL
+ON DELETE RESTRICT ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: stations_fk | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_yearly_summary DROP CONSTRAINT IF EXISTS stations_fk CASCADE;
+ALTER TABLE weather.weather_yearly_summary ADD CONSTRAINT stations_fk FOREIGN KEY (station_id)
+REFERENCES stations.stations (station_id) MATCH FULL
+ON DELETE RESTRICT ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: weather_data_uq | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_data DROP CONSTRAINT IF EXISTS weather_data_uq CASCADE;
+ALTER TABLE weather.weather_data ADD CONSTRAINT weather_data_uq UNIQUE (station_id,time_range);
+-- ddl-end --
+
+-- object: weather_daily_summary_uq | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_daily_summary DROP CONSTRAINT IF EXISTS weather_daily_summary_uq CASCADE;
+ALTER TABLE weather.weather_daily_summary ADD CONSTRAINT weather_daily_summary_uq UNIQUE (station_id,time_range);
+-- ddl-end --
+
+-- object: weather_hourly_summary_uq | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_hourly_summary DROP CONSTRAINT IF EXISTS weather_hourly_summary_uq CASCADE;
+ALTER TABLE weather.weather_hourly_summary ADD CONSTRAINT weather_hourly_summary_uq UNIQUE (station_id,time_range);
+-- ddl-end --
+
+-- object: weather_monthly_summary_uk | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_monthly_summary DROP CONSTRAINT IF EXISTS weather_monthly_summary_uk CASCADE;
+ALTER TABLE weather.weather_monthly_summary ADD CONSTRAINT weather_monthly_summary_uk UNIQUE (station_id,time_range);
+-- ddl-end --
+
+-- object: weather_yearly_summary_uq | type: CONSTRAINT --
+-- ALTER TABLE weather.weather_yearly_summary DROP CONSTRAINT IF EXISTS weather_yearly_summary_uq CASCADE;
+ALTER TABLE weather.weather_yearly_summary ADD CONSTRAINT weather_yearly_summary_uq UNIQUE (station_id,time_range);
+-- ddl-end --
+
+-- object: stations_fk | type: CONSTRAINT --
+-- ALTER TABLE auth.api_keys DROP CONSTRAINT IF EXISTS stations_fk CASCADE;
+ALTER TABLE auth.api_keys ADD CONSTRAINT stations_fk FOREIGN KEY (station_id)
+REFERENCES stations.stations (station_id) MATCH FULL
+ON DELETE SET NULL ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: weather_data_station_time_idx | type: INDEX --
+-- DROP INDEX IF EXISTS weather.weather_data_station_time_idx CASCADE;
+CREATE INDEX weather_data_station_time_idx ON weather.weather_data
+USING gist
+(
+	station_id,
+	time_range
+);
+-- ddl-end --
+
+-- object: weather_hourly_station_time_idx | type: INDEX --
+-- DROP INDEX IF EXISTS weather.weather_hourly_station_time_idx CASCADE;
+CREATE INDEX weather_hourly_station_time_idx ON weather.weather_hourly_summary
+USING gist
+(
+	station_id,
+	time_range
+);
+-- ddl-end --
+
+-- object: weather_daily_station_time_idx | type: INDEX --
+-- DROP INDEX IF EXISTS weather.weather_daily_station_time_idx CASCADE;
+CREATE INDEX weather_daily_station_time_idx ON weather.weather_daily_summary
+USING gist
+(
+	station_id,
+	time_range
+);
+-- ddl-end --
+
+-- object: weather_monthly_station_time_idx | type: INDEX --
+-- DROP INDEX IF EXISTS weather.weather_monthly_station_time_idx CASCADE;
+CREATE INDEX weather_monthly_station_time_idx ON weather.weather_monthly_summary
+USING gist
+(
+	station_id,
+	time_range
+);
+-- ddl-end --
+
+-- object: weather_yearly_station_time_idx | type: INDEX --
+-- DROP INDEX IF EXISTS weather.weather_yearly_station_time_idx CASCADE;
+CREATE INDEX weather_yearly_station_time_idx ON weather.weather_yearly_summary
+USING gist
+(
+	station_id,
+	time_range
+);
+-- ddl-end --
+
+-- object: grant_r_508e7ae2b6 | type: PERMISSION --
+GRANT SELECT
+   ON TABLE weather.weather_data
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_r_81eb1491fe | type: PERMISSION --
+GRANT SELECT
+   ON TABLE weather.weather_daily_summary
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_r_8f223bc829 | type: PERMISSION --
+GRANT SELECT
+   ON TABLE weather.weather_hourly_summary
+   TO PUBLIC;
+
+-- ddl-end --
+
+
+-- object: grant_r_c30de1b49b | type: PERMISSION --
+GRANT SELECT
+   ON TABLE weather.weather_monthly_summary
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_r_7a29b376e9 | type: PERMISSION --
+GRANT SELECT
+   ON TABLE weather.weather_yearly_summary
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_U_bc37b95b45" | type: PERMISSION --
+GRANT USAGE
+   ON SCHEMA weather
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_raw_d43dd81845 | type: PERMISSION --
+GRANT SELECT,INSERT,UPDATE
+   ON TABLE stations.stations
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_U_d2b8087326" | type: PERMISSION --
+GRANT USAGE
+   ON SCHEMA audit
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_ra_9f540b1502 | type: PERMISSION --
+GRANT SELECT,INSERT
+   ON TABLE audit.log
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_U_b6780f8532" | type: PERMISSION --
+GRANT USAGE
+   ON SCHEMA auth
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_raw_7331f173b2 | type: PERMISSION --
+GRANT SELECT,INSERT,UPDATE
+   ON TABLE auth.api_keys
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_raw_3c918596b9 | type: PERMISSION --
+GRANT SELECT,INSERT,UPDATE
+   ON TABLE auth.users
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: grant_raw_34bfbd1bb2 | type: PERMISSION --
+GRANT SELECT,INSERT,UPDATE
+   ON TABLE auth.user_sessions
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_U_74e2d7b064" | type: PERMISSION --
+GRANT USAGE
+   ON SCHEMA weather
+   TO "weatherCollector";
+
+-- ddl-end --
+
+
+-- object: grant_a_4b4a7a72d7 | type: PERMISSION --
+GRANT INSERT
+   ON TABLE weather.weather_data
+   TO "weatherCollector";
+
+-- ddl-end --
+
+
+-- object: "grant_rU_69f0e32dff" | type: PERMISSION --
+GRANT SELECT,USAGE
+   ON SEQUENCE auth.users_user_id_seq
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_rU_f087d3c839" | type: PERMISSION --
+GRANT SELECT,USAGE
+   ON SEQUENCE auth.api_keys_key_id_seq
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_rU_364941c003" | type: PERMISSION --
+GRANT SELECT,USAGE
+   ON SEQUENCE auth.user_sessions_session_id_seq
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_rU_08df871693" | type: PERMISSION --
+GRANT SELECT,USAGE
+   ON SEQUENCE audit.log_id_seq
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_rU_63bc7ded72" | type: PERMISSION --
+GRANT SELECT,USAGE
+   ON SEQUENCE stations.stations_station_id_seq
+   TO "weatherAPI";
+
+-- ddl-end --
+
+
+-- object: "grant_rU_0f87423a92" | type: PERMISSION --
+GRANT SELECT,USAGE
+   ON SEQUENCE weather.weather_data_id_seq
+   TO "weatherCollector";
+
+-- ddl-end --
+
+
+-- object: "grant_U_2f8066147e" | type: PERMISSION --
+GRANT USAGE
+   ON SCHEMA stations
+   TO PUBLIC;
+
+-- ddl-end --
+
+
+-- object: "grant_U_42e8299828" | type: PERMISSION --
+GRANT USAGE
+   ON SCHEMA auth
+   TO "weatherCollector";
+
+-- ddl-end --
+
+
+-- object: grant_r_bf4515c2b3 | type: PERMISSION --
+GRANT SELECT
+   ON TABLE auth.api_keys
+   TO "weatherCollector";
+
+-- ddl-end --
+
+
+-- object: "grant_U_b4411db8ae" | type: PERMISSION --
+GRANT USAGE
+   ON SCHEMA stations
+   TO "weatherCollector";
+
+-- ddl-end --
+
+
+-- object: grant_r_dbc37f0deb | type: PERMISSION --
+GRANT SELECT
+   ON TABLE stations.stations
+   TO "weatherCollector";
+
+-- ddl-end --
+
+
+

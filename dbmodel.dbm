@@ -1,0 +1,1488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+CAUTION: Do not modify this file unless you know what you are doing.
+ Unexpected results may occur if the code is changed deliberately.
+-->
+<dbmodel pgmodeler-ver="1.2.1" use-changelog="false" max-obj-count="31"
+	 gen-disabled-objs-code="false" show-sys-schemas-rects="true"
+	 last-position="-849,-155" last-zoom="1.1" scene-rect="-788,-146,2744.13,1196.52"
+	 default-owner="postgres"
+	 layers="Default layer"
+	 active-layers="0"
+	 layer-name-colors="#000000"
+	 layer-rect-colors="#b4b4b4"
+	 show-layer-names="false" show-layer-rects="false">
+<role name="weather"
+ createdb="true">
+</role>
+
+<role name="weatherAPI"
+ login="true"
+ password="${WEATHER_API_PASSWORD}">
+</role>
+
+<role name="weatherCollector"
+ login="true"
+ password="${WEATHER_COLLECTOR_PASSWORD}">
+</role>
+
+<database name="weather" is-template="false" allow-conns="true">
+</database>
+
+<schema name="public" layers="0" fill-color="#e1e1e1" name-color="#000000" sql-disabled="true">
+</schema>
+
+<schema name="weather" layers="0" rect-visible="true" fill-color="#e1e1e1" name-color="#31363b">
+	<role name="weather"/>
+</schema>
+
+<schema name="auth" layers="0" rect-visible="true" fill-color="#e1e1e1" name-color="#31363b">
+	<role name="weather"/>
+</schema>
+
+<schema name="audit" layers="0" rect-visible="true" fill-color="#e1e1e1" name-color="#31363b">
+	<role name="weather"/>
+</schema>
+
+<schema name="stations" layers="0" rect-visible="true" fill-color="#e1e1e1" name-color="#31363b">
+	<role name="weather"/>
+</schema>
+
+<extension name="postgis">
+	<schema name="public"/>
+	<comment> <![CDATA[PostGIS geometry, geography, and raster spatial types and functions]]> </comment>
+</extension>
+
+<extension name="uuid-ossp">
+	<schema name="public"/>
+</extension>
+
+<extension name="btree_gist">
+	<schema name="weather"/>
+</extension>
+
+<sequence name="stations_station_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="stations"/>
+	<role name="weather"/>
+</sequence>
+
+<sequence name="weather_data_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="weather"/>
+	<role name="weather"/>
+</sequence>
+
+<sequence name="weather_daily_summary_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="weather"/>
+	<role name="weather"/>
+</sequence>
+
+<sequence name="weather_hourly_summary_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="weather"/>
+	<role name="weather"/>
+</sequence>
+
+<sequence name="weather_monthly_summary_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="weather"/>
+	<role name="weather"/>
+</sequence>
+
+<sequence name="weather_yearly_summary_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="weather"/>
+	<role name="weather"/>
+</sequence>
+
+<sequence name="users_user_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="auth"/>
+	<role name="weather"/>
+</sequence>
+
+<sequence name="user_sessions_session_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="auth"/>
+	<role name="weather"/>
+</sequence>
+
+<usertype name="api_key_type" configuration="enumeration">
+	<schema name="auth"/>
+	<role name="weather"/>
+	<enumeration label="stations_management"/>
+	<enumeration label="weather_upload"/>
+	<enumeration label="stations_control"/>
+</usertype>
+
+<sequence name="log_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="audit"/>
+	<role name="weather"/>
+</sequence>
+
+<function name="update_hourly_summary"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY DEFINER"
+		parallel-type="PARALLEL UNSAFE"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<language name="plpgsql"/>
+	<return-type>
+	<type name="trigger" length="0"/>
+	</return-type>
+	<definition> <![CDATA[DECLARE
+    hour_begin timestamptz;
+    hour_range tstzrange;
+BEGIN
+    -- Hora de inicio del dato recién insertado
+    hour_begin := date_trunc('hour', lower(NEW.time_range));
+    hour_range := tstzrange(hour_begin, hour_begin + interval '1 hour');
+
+    -- Insertar o actualizar los promedios de esa hora y estación
+    INSERT INTO weather.weather_hourly_summary (station_id, time_range, avg_temperature, avg_humidity, avg_pressure, sum_rainfall, stddev_rainfall, avg_wind_speed, avg_wind_direction, stddev_wind_speed, max_gust_speed, max_gust_direction, avg_lux, avg_uvi, avg_solar_irradiance)
+    SELECT
+        NEW.station_id AS station_id,
+        hour_range,
+        AVG(temperature) AS avg_temperature,
+        AVG(humidity) AS avg_humidity,
+        AVG(pressure) AS avg_pressure,
+        SUM(rainfall) AS sum_rainfall,
+        STDDEV(rainfall) AS stddev_rainfall,
+        AVG(wind_speed) AS avg_wind_speed,
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ) AS avg_wind_direction,
+        STDDEV(wind_speed) AS stddev_wind_speed,
+        MAX(gust_speed) AS max_gust_speed,
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && hour_range
+         ORDER BY gust_speed DESC
+         LIMIT 1) AS max_gust_direction,
+        AVG(lux) AS avg_lux,
+        AVG(uvi) AS avg_uvi,
+        AVG(solar_irradiance) AS avg_solar_irradiance
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && hour_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+    RETURN NEW;
+END;]]> </definition>
+</function>
+
+<function name="update_daily_summary"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY DEFINER"
+		parallel-type="PARALLEL UNSAFE"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<language name="plpgsql"/>
+	<return-type>
+	<type name="trigger" length="0"/>
+	</return-type>
+	<definition> <![CDATA[DECLARE
+    day_begin timestamptz;
+    day_range tstzrange;
+BEGIN
+    -- Día de inicio del dato recién insertado según hora de Madrid
+    day_begin := date_trunc('day', lower(NEW.time_range) AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid';
+    day_range := tstzrange(day_begin, day_begin + interval '1 day');
+
+    -- Insertar o actualizar los agregados diarios
+    INSERT INTO weather.weather_daily_summary (
+        station_id, time_range,
+        avg_temperature, max_temperature, min_temperature, stddev_temperature,
+        avg_humidity, max_humidity, min_humidity, stddev_humidity,
+        avg_pressure, max_pressure, min_pressure,
+        sum_rainfall, stddev_rainfall,
+        avg_wind_speed, avg_wind_direction, stddev_wind_speed, wind_run,
+        max_gust_speed, max_gust_direction,
+        avg_lux, max_lux,
+        avg_uvi, max_uvi,
+        avg_solar_irradiance
+    )
+    SELECT
+        NEW.station_id,
+        day_range,
+        AVG(temperature),
+        MAX(temperature),
+        MIN(temperature),
+        STDDEV(temperature),
+        AVG(humidity),
+        MAX(humidity),
+        MIN(humidity),
+        STDDEV(humidity),
+        AVG(pressure),
+        MAX(pressure),
+        MIN(pressure),
+        SUM(rainfall),
+        STDDEV(rainfall),
+        AVG(wind_speed),
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ),
+        STDDEV(wind_speed),
+        SUM(wind_speed * EXTRACT(EPOCH FROM (upper(time_range) - lower(time_range)))) AS wind_run,
+        MAX(gust_speed),
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && day_range
+         ORDER BY gust_speed DESC
+         LIMIT 1),
+        AVG(lux),
+        MAX(lux),
+        AVG(uvi),
+        MAX(uvi),
+        AVG(solar_irradiance)
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && day_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        max_temperature = EXCLUDED.max_temperature,
+        min_temperature = EXCLUDED.min_temperature,
+        stddev_temperature = EXCLUDED.stddev_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        max_humidity = EXCLUDED.max_humidity,
+        min_humidity = EXCLUDED.min_humidity,
+        stddev_humidity = EXCLUDED.stddev_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        max_pressure = EXCLUDED.max_pressure,
+        min_pressure = EXCLUDED.min_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        wind_run = EXCLUDED.wind_run,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        max_lux = EXCLUDED.max_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        max_uvi = EXCLUDED.max_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+
+    RETURN NEW;
+END;]]> </definition>
+</function>
+
+<function name="update_monthly_summary"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY DEFINER"
+		parallel-type="PARALLEL UNSAFE"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<language name="plpgsql"/>
+	<return-type>
+	<type name="trigger" length="0"/>
+	</return-type>
+	<definition> <![CDATA[DECLARE
+    month_begin timestamptz;
+    month_range tstzrange;
+BEGIN
+    -- Mes de inicio del dato recién insertado según hora de Madrid
+    month_begin := date_trunc('month', lower(NEW.time_range) AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid';
+    month_range := tstzrange(month_begin, month_begin + interval '1 month');
+
+    -- Insertar o actualizar los agregados mensuales
+    INSERT INTO weather.weather_monthly_summary (
+        station_id, time_range,
+        avg_temperature, max_temperature, min_temperature, stddev_temperature,
+        avg_humidity, max_humidity, min_humidity, stddev_humidity,
+        avg_pressure, max_pressure, min_pressure,
+        sum_rainfall, stddev_rainfall,
+        avg_wind_speed, avg_wind_direction, stddev_wind_speed,
+        max_gust_speed, max_gust_direction,
+        avg_lux, max_lux,
+        avg_uvi, max_uvi,
+        avg_solar_irradiance
+    )
+    SELECT
+        NEW.station_id,
+        month_range,
+        AVG(temperature),
+        MAX(temperature),
+        MIN(temperature),
+        STDDEV(temperature),
+        AVG(humidity),
+        MAX(humidity),
+        MIN(humidity),
+        STDDEV(humidity),
+        AVG(pressure),
+        MAX(pressure),
+        MIN(pressure),
+        SUM(rainfall),
+        STDDEV(rainfall),
+        AVG(wind_speed),
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ),
+        STDDEV(wind_speed),
+        MAX(gust_speed),
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && month_range
+         ORDER BY gust_speed DESC
+         LIMIT 1),
+        AVG(lux),
+        MAX(lux),
+        AVG(uvi),
+        MAX(uvi),
+        AVG(solar_irradiance)
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && month_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        max_temperature = EXCLUDED.max_temperature,
+        min_temperature = EXCLUDED.min_temperature,
+        stddev_temperature = EXCLUDED.stddev_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        max_humidity = EXCLUDED.max_humidity,
+        min_humidity = EXCLUDED.min_humidity,
+        stddev_humidity = EXCLUDED.stddev_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        max_pressure = EXCLUDED.max_pressure,
+        min_pressure = EXCLUDED.min_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        wind_run = EXCLUDED.wind_run,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        max_lux = EXCLUDED.max_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        max_uvi = EXCLUDED.max_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+
+    RETURN NEW;
+END;]]> </definition>
+</function>
+
+<function name="update_yearly_summary"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY DEFINER"
+		parallel-type="PARALLEL UNSAFE"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<language name="plpgsql"/>
+	<return-type>
+	<type name="trigger" length="0"/>
+	</return-type>
+	<definition> <![CDATA[DECLARE
+    year_begin timestamptz;
+    year_range tstzrange;
+BEGIN
+    -- Año de inicio del dato recién insertado según hora de Madrid
+    year_begin := date_trunc('year', lower(NEW.time_range) AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid';
+    year_range := tstzrange(year_begin, year_begin + interval '1 year');
+
+    -- Insertar o actualizar los agregados anuales
+    INSERT INTO weather.weather_yearly_summary (
+        station_id, time_range,
+        avg_temperature, max_temperature, min_temperature, stddev_temperature,
+        avg_humidity, max_humidity, min_humidity, stddev_humidity,
+        avg_pressure, max_pressure, min_pressure,
+        sum_rainfall, stddev_rainfall,
+        avg_wind_speed, avg_wind_direction, stddev_wind_speed,
+        max_gust_speed, max_gust_direction,
+        avg_lux, max_lux,
+        avg_uvi, max_uvi,
+        avg_solar_irradiance
+    )
+    SELECT
+        NEW.station_id,
+        year_range,
+        AVG(temperature),
+        MAX(temperature),
+        MIN(temperature),
+        STDDEV(temperature),
+        AVG(humidity),
+        MAX(humidity),
+        MIN(humidity),
+        STDDEV(humidity),
+        AVG(pressure),
+        MAX(pressure),
+        MIN(pressure),
+        SUM(rainfall),
+        STDDEV(rainfall),
+        AVG(wind_speed),
+        MOD(
+            CAST(DEGREES(
+                ATAN2(
+                    SUM(CAST(wind_speed AS numeric) * SIN(RADIANS(CAST(wind_direction AS numeric)))),
+                    SUM(CAST(wind_speed AS numeric) * COS(RADIANS(CAST(wind_direction AS numeric))))
+                )
+            ) AS numeric) + 360,
+            360
+        ),
+        STDDEV(wind_speed),
+        MAX(gust_speed),
+        (SELECT gust_direction
+         FROM weather.weather_data wd2
+         WHERE wd2.station_id = NEW.station_id
+           AND wd2.time_range && year_range
+         ORDER BY gust_speed DESC
+         LIMIT 1),
+        AVG(lux),
+        MAX(lux),
+        AVG(uvi),
+        MAX(uvi),
+        AVG(solar_irradiance)
+    FROM weather.weather_data
+    WHERE station_id = NEW.station_id
+      AND time_range && year_range
+    ON CONFLICT (station_id, time_range)
+    DO UPDATE SET
+        avg_temperature = EXCLUDED.avg_temperature,
+        max_temperature = EXCLUDED.max_temperature,
+        min_temperature = EXCLUDED.min_temperature,
+        stddev_temperature = EXCLUDED.stddev_temperature,
+        avg_humidity = EXCLUDED.avg_humidity,
+        max_humidity = EXCLUDED.max_humidity,
+        min_humidity = EXCLUDED.min_humidity,
+        stddev_humidity = EXCLUDED.stddev_humidity,
+        avg_pressure = EXCLUDED.avg_pressure,
+        max_pressure = EXCLUDED.max_pressure,
+        min_pressure = EXCLUDED.min_pressure,
+        sum_rainfall = EXCLUDED.sum_rainfall,
+        stddev_rainfall = EXCLUDED.stddev_rainfall,
+        avg_wind_speed = EXCLUDED.avg_wind_speed,
+        avg_wind_direction = EXCLUDED.avg_wind_direction,
+        stddev_wind_speed = EXCLUDED.stddev_wind_speed,
+        max_gust_speed = EXCLUDED.max_gust_speed,
+        max_gust_direction = EXCLUDED.max_gust_direction,
+        avg_lux = EXCLUDED.avg_lux,
+        max_lux = EXCLUDED.max_lux,
+        avg_uvi = EXCLUDED.avg_uvi,
+        max_uvi = EXCLUDED.max_uvi,
+        avg_solar_irradiance = EXCLUDED.avg_solar_irradiance;
+
+    RETURN NEW;
+END;]]> </definition>
+</function>
+
+<sequence name="api_keys_key_id_seq" cycle="false" start="1" increment="1" min-value="0" max-value="2147483647" cache="1">
+	<schema name="auth"/>
+	<role name="weather"/>
+</sequence>
+
+<table name="weather_data" layers="0" collapse-mode="2" max-obj-count="16" z-value="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<position x="780" y="-60"/>
+	<column name="id" not-null="true" sequence="weather.weather_data_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time_range" not-null="true">
+		<type name="tstzrange" length="0"/>
+	</column>
+	<column name="temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="wind_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="gust_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="gust_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="solar_irradiance">
+		<type name="real" length="0"/>
+	</column>
+	<constraint name="weather_data_pk" type="pk-constr" table="weather.weather_data">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="station_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="stations_fk" index="1"/>
+	</customidxs></table>
+
+<trigger name="trg_update_daily_summary" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="weather.weather_data">
+		<function signature="weather.update_daily_summary()"/>
+</trigger>
+
+<trigger name="trg_update_monthly_summary" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="weather.weather_data">
+		<function signature="weather.update_monthly_summary()"/>
+</trigger>
+
+<trigger name="trg_update_yearly_summary" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="weather.weather_data">
+		<function signature="weather.update_yearly_summary()"/>
+</trigger>
+
+<trigger name="trg_update_hourly_summary" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="weather.weather_data">
+		<function signature="weather.update_hourly_summary()"/>
+</trigger>
+
+<table name="weather_daily_summary" layers="0" collapse-mode="2" max-obj-count="32" z-value="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<position x="1560" y="-20"/>
+	<column name="id" not-null="true" sequence="weather.weather_daily_summary_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time_range" not-null="true">
+		<type name="tstzrange" length="0"/>
+	</column>
+	<column name="avg_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="sum_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="wind_run">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_solar_irradiance">
+		<type name="real" length="0"/>
+	</column>
+	<constraint name="weather_daily_summary_pk" type="pk-constr" table="weather.weather_daily_summary">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="station_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="stations_fk" index="1"/>
+	</customidxs></table>
+
+<table name="weather_hourly_summary" layers="0" collapse-mode="2" max-obj-count="19" z-value="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<position x="1180" y="-40"/>
+	<column name="id" not-null="true" sequence="weather.weather_hourly_summary_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time_range" not-null="true">
+		<type name="tstzrange" length="0"/>
+	</column>
+	<column name="avg_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="sum_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_solar_irradiance">
+		<type name="real" length="0"/>
+	</column>
+	<constraint name="weather_hourly_summary_pk" type="pk-constr" table="weather.weather_hourly_summary">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="station_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="stations_fk" index="1"/>
+	</customidxs></table>
+
+<table name="weather_monthly_summary" layers="0" collapse-mode="2" max-obj-count="32" z-value="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<position x="780" y="400"/>
+	<column name="id" not-null="true" sequence="weather.weather_monthly_summary_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time_range" not-null="true">
+		<type name="tstzrange" length="0"/>
+	</column>
+	<column name="avg_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="sum_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="wind_run">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_solar_irradiance">
+		<type name="real" length="0"/>
+	</column>
+	<constraint name="weather_monthly_summary_pk" type="pk-constr" table="weather.weather_monthly_summary">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="station_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="stations_fk" index="1"/>
+	</customidxs></table>
+
+<table name="weather_yearly_summary" layers="0" collapse-mode="2" max-obj-count="32" z-value="0">
+	<schema name="weather"/>
+	<role name="weather"/>
+	<position x="1180" y="400"/>
+	<column name="id" not-null="true" sequence="weather.weather_yearly_summary_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time_range" not-null="true">
+		<type name="tstzrange" length="0"/>
+	</column>
+	<column name="avg_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_temperature">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_humidity">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="min_pressure">
+		<type name="real" length="0"/>
+	</column>
+	<column name="sum_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_rainfall">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_wind_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="stddev_wind_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="wind_run">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_speed">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_gust_direction">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_lux">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="max_uvi">
+		<type name="real" length="0"/>
+	</column>
+	<column name="avg_solar_irradiance">
+		<type name="real" length="0"/>
+	</column>
+	<constraint name="weather_yearly_summary_pk" type="pk-constr" table="weather.weather_yearly_summary">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="station_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="stations_fk" index="1"/>
+	</customidxs></table>
+
+<table name="stations" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="stations"/>
+	<role name="weather"/>
+	<position x="-120" y="660"/>
+	<column name="station_id" not-null="true" sequence="stations.stations_station_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="location" not-null="true">
+		<type name="geography" length="0" spatial-type="POINT" variation="1" srid="4326"/>
+	</column>
+	<column name="can_recieve_commands" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="deleted_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="stations_pk" type="pk-constr" table="stations.stations">
+		<columns names="station_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="stations_uuid_uq" type="uq-constr" table="stations.stations">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="stations_name_uq" type="uq-constr" table="stations.stations">
+		<columns names="name" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="user_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="users_fk" index="2"/>
+	</customidxs></table>
+
+<table name="log" layers="0" collapse-mode="2" max-obj-count="10" z-value="0">
+	<schema name="audit"/>
+	<role name="weather"/>
+	<position x="-620" y="640"/>
+	<column name="id" not-null="true" sequence="audit.log_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="endpoint" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="method" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="status_code">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="message">
+		<type name="text" length="0"/>
+	</column>
+	<column name="ip_address">
+		<type name="inet" length="0"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="now()">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="log_pk" type="pk-constr" table="audit.log">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="key_id" index="6"/>
+		<object name="session_id" index="5"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="api_keys_fk" index="1"/>
+		<object name="user_sessions_fk" index="2"/>
+	</customidxs></table>
+
+<table name="api_keys" layers="0" collapse-mode="2" max-obj-count="12" z-value="0">
+	<schema name="auth"/>
+	<role name="weather"/>
+	<position x="120" y="-100"/>
+	<column name="key_id" not-null="true" sequence="auth.api_keys_key_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="api_key" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="api_key_type" not-null="true">
+		<type name="auth.api_key_type" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="expires_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="revoked_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="api_keys_pk" type="pk-constr" table="auth.api_keys">
+		<columns names="key_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="api_keys_uq" type="uq-constr" table="auth.api_keys">
+		<columns names="api_key" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="api_key_uuid_uq" type="uq-constr" table="auth.api_keys">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="station_id" index="9"/>
+		<object name="user_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="stations_fk" index="4"/>
+		<object name="users_fk" index="2"/>
+	</customidxs></table>
+
+<table name="users" layers="0" collapse-mode="2" max-obj-count="10" z-value="0">
+	<schema name="auth"/>
+	<role name="weather"/>
+	<position x="-340" y="-80"/>
+	<column name="user_id" not-null="true" sequence="auth.users_user_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="username" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="password" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="email" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="max_stations" not-null="true" default-value="0">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="is_admin" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="deleted_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="users_pk" type="pk-constr" table="auth.users">
+		<columns names="user_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="users_uq" type="uq-constr" table="auth.users">
+		<columns names="username" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="users_uuid_uq" type="uq-constr" table="auth.users">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="user_sessions" layers="0" collapse-mode="2" max-obj-count="13" z-value="0">
+	<schema name="auth"/>
+	<role name="weather"/>
+	<position x="-760" y="20"/>
+	<column name="session_id" not-null="true" sequence="auth.user_sessions_session_id_seq">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="session_token" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="last_seen_at" not-null="true" default-value="now()">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="expires_at" not-null="true">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="reauth_at" not-null="true" default-value="now()">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<column name="ip_address">
+		<type name="inet" length="0"/>
+	</column>
+	<column name="user_agent">
+		<type name="text" length="0"/>
+	</column>
+	<column name="revoked_at">
+		<type name="timestamptz" length="0"/>
+	</column>
+	<constraint name="user_sessions_pk" type="pk-constr" table="auth.user_sessions">
+		<columns names="session_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="user_sessions_uq" type="uq-constr" table="auth.user_sessions">
+		<columns names="session_token" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="users_sessions_uuid_uq" type="uq-constr" table="auth.user_sessions">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+
+	<customidxs object-type="column">
+		<object name="user_id" index="1"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="users_fk" index="2"/>
+	</customidxs></table>
+
+<relationship name="users_has_many_user_sessions" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#ea38bd"
+	 src-table="auth.users"
+	 dst-table="auth.user_sessions"
+	 src-required="true" dst-required="false">
+	<label ref-type="name-label">
+		<position x="42.3433" y="16.8969"/>
+	</label>
+</relationship>
+
+<relationship name="users_has_many_api_keys" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#5e68b4"
+	 src-table="auth.users"
+	 dst-table="auth.api_keys"
+	 src-required="true" dst-required="false"/>
+
+<relationship name="users_id" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#e35792"
+	 src-table="auth.users"
+	 dst-table="stations.stations"
+	 src-required="false" dst-required="false"/>
+
+<constraint name="api_keys_name_uq" type="uq-constr" table="auth.api_keys">
+	<columns names="user_id,name" ref-type="src-columns"/>
+</constraint>
+
+<relationship name="user_sessions_has_many_log" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#eccc4b"
+	 src-table="auth.user_sessions"
+	 dst-table="audit.log"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="api_keys_has_many_log" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#1632c4"
+	 src-table="auth.api_keys"
+	 dst-table="audit.log"
+	 src-required="false" dst-required="false">
+	<label ref-type="name-label">
+		<position x="130.162" y="-70.8927"/>
+	</label>
+</relationship>
+
+<relationship name="stations_has_many_weather_data" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#a2da0d"
+	 src-table="stations.stations"
+	 dst-table="weather.weather_data"
+	 src-required="true" dst-required="false"/>
+
+<relationship name="stations_has_many_weather_hourly_summary" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#f116a4"
+	 src-table="stations.stations"
+	 dst-table="weather.weather_hourly_summary"
+	 src-required="true" dst-required="false"/>
+
+<relationship name="stations_has_many_weather_daily_summary" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#3ea8d3"
+	 src-table="stations.stations"
+	 dst-table="weather.weather_daily_summary"
+	 src-required="true" dst-required="false"/>
+
+<relationship name="stations_has_many_weather_monthly_summary" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#efc76c"
+	 src-table="stations.stations"
+	 dst-table="weather.weather_monthly_summary"
+	 src-required="true" dst-required="false">
+	<label ref-type="name-label">
+		<position x="-16.7092" y="20.1203"/>
+	</label>
+</relationship>
+
+<relationship name="stations_has_many_weather_yearly_summary" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#d23ae0"
+	 src-table="stations.stations"
+	 dst-table="weather.weather_yearly_summary"
+	 src-required="true" dst-required="false"/>
+
+<constraint name="weather_data_uq" type="uq-constr" table="weather.weather_data">
+	<columns names="station_id,time_range" ref-type="src-columns"/>
+</constraint>
+
+<constraint name="weather_daily_summary_uq" type="uq-constr" table="weather.weather_daily_summary">
+	<columns names="station_id,time_range" ref-type="src-columns"/>
+</constraint>
+
+<constraint name="weather_hourly_summary_uq" type="uq-constr" table="weather.weather_hourly_summary">
+	<columns names="station_id,time_range" ref-type="src-columns"/>
+</constraint>
+
+<constraint name="weather_monthly_summary_uk" type="uq-constr" table="weather.weather_monthly_summary">
+	<columns names="station_id,time_range" ref-type="src-columns"/>
+</constraint>
+
+<constraint name="weather_yearly_summary_uq" type="uq-constr" table="weather.weather_yearly_summary">
+	<columns names="station_id,time_range" ref-type="src-columns"/>
+</constraint>
+
+<relationship name="stations_has_many_api_keys" type="rel1n" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 fk-idx-pattern="{st}_idx"
+	 custom-color="#c06cf4"
+	 src-table="stations.stations"
+	 dst-table="auth.api_keys"
+	 src-required="false" dst-required="false"/>
+
+<index name="weather_data_station_time_idx" table="weather.weather_data"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="gist" factor="0">
+		<idxelement use-sorting="false">
+			<column name="station_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="time_range"/>
+		</idxelement>
+</index>
+
+<index name="weather_hourly_station_time_idx" table="weather.weather_hourly_summary"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="gist" factor="0">
+		<idxelement use-sorting="false">
+			<column name="station_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="time_range"/>
+		</idxelement>
+</index>
+
+<index name="weather_daily_station_time_idx" table="weather.weather_daily_summary"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="gist" factor="0">
+		<idxelement use-sorting="false">
+			<column name="station_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="time_range"/>
+		</idxelement>
+</index>
+
+<index name="weather_monthly_station_time_idx" table="weather.weather_monthly_summary"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="gist" factor="0">
+		<idxelement use-sorting="false">
+			<column name="station_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="time_range"/>
+		</idxelement>
+</index>
+
+<index name="weather_yearly_station_time_idx" table="weather.weather_yearly_summary"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="gist" factor="0">
+		<idxelement use-sorting="false">
+			<column name="station_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="time_range"/>
+		</idxelement>
+</index>
+
+<permission>
+	<object name="weather.weather_data" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true"/>
+</permission>
+<permission>
+	<object name="weather.weather_daily_summary" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true"/>
+</permission>
+<permission>
+	<object name="weather.weather_hourly_summary" type="table"/>
+	<privileges select="true"/>
+</permission>
+<permission>
+	<object name="weather.weather_monthly_summary" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true"/>
+</permission>
+<permission>
+	<object name="weather.weather_yearly_summary" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true"/>
+</permission>
+<permission>
+	<object name="weather" type="schema"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges usage="true"/>
+</permission>
+<permission>
+	<object name="stations.stations" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" insert="true" update="true"/>
+</permission>
+<permission>
+	<object name="audit" type="schema"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges usage="true"/>
+</permission>
+<permission>
+	<object name="audit.log" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" insert="true"/>
+</permission>
+<permission>
+	<object name="auth" type="schema"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges usage="true"/>
+</permission>
+<permission>
+	<object name="auth.api_keys" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" insert="true" update="true"/>
+</permission>
+<permission>
+	<object name="auth.users" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" insert="true" update="true"/>
+</permission>
+<permission>
+	<object name="auth.user_sessions" type="table"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" insert="true" update="true"/>
+</permission>
+<permission>
+	<object name="weather" type="schema"/>
+	<roles names="&quot;weatherCollector&quot;"/>
+	<privileges usage="true"/>
+</permission>
+<permission>
+	<object name="weather.weather_data" type="table"/>
+	<roles names="&quot;weatherCollector&quot;"/>
+	<privileges insert="true"/>
+</permission>
+<permission>
+	<object name="auth.users_user_id_seq" type="sequence"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" usage="true"/>
+</permission>
+<permission>
+	<object name="auth.api_keys_key_id_seq" type="sequence"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" usage="true"/>
+</permission>
+<permission>
+	<object name="auth.user_sessions_session_id_seq" type="sequence"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" usage="true"/>
+</permission>
+<permission>
+	<object name="audit.log_id_seq" type="sequence"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" usage="true"/>
+</permission>
+<permission>
+	<object name="stations.stations_station_id_seq" type="sequence"/>
+	<roles names="&quot;weatherAPI&quot;"/>
+	<privileges select="true" usage="true"/>
+</permission>
+<permission>
+	<object name="weather.weather_data_id_seq" type="sequence"/>
+	<roles names="&quot;weatherCollector&quot;"/>
+	<privileges select="true" usage="true"/>
+</permission>
+<permission>
+	<object name="stations" type="schema"/>
+	<privileges usage="true"/>
+</permission>
+<permission>
+	<object name="auth" type="schema"/>
+	<roles names="&quot;weatherCollector&quot;"/>
+	<privileges usage="true"/>
+</permission>
+<permission>
+	<object name="auth.api_keys" type="table"/>
+	<roles names="&quot;weatherCollector&quot;"/>
+	<privileges select="true"/>
+</permission>
+<permission>
+	<object name="stations" type="schema"/>
+	<roles names="&quot;weatherCollector&quot;"/>
+	<privileges usage="true"/>
+</permission>
+<permission>
+	<object name="stations.stations" type="table"/>
+	<roles names="&quot;weatherCollector&quot;"/>
+	<privileges select="true"/>
+</permission>
+</dbmodel>
