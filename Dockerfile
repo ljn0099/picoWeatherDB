@@ -1,4 +1,4 @@
-FROM postgis/postgis:18-3.6-alpine
+FROM docker.io/postgis/postgis:18-3.6-alpine
 
 RUN apk add --no-cache gettext
 
