@@ -31,7 +31,7 @@ jobs:
         run: |
           IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/pico_weather_db
           docker buildx build \
-            --platform linux/amd64,linux/arm64 \
+            --platform linux/amd64 \
             -t $IMAGE_NAME:latest \
             -t $IMAGE_NAME:${{ github.sha }} \
             --push \
